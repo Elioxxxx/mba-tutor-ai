@@ -17,7 +17,8 @@
 
 ---
 二、 核心业务流程 (Core Workflow)
-![Uploading image.png…]()
+<img width="1556" height="1152" alt="bb10293061418e542616780bfe9f0219" src="https://github.com/user-attachments/assets/29a5e15e-7e89-4f0a-8740-03090cb67f02" />
+
 
 
 ---
