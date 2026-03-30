@@ -1,0 +1,16 @@
+import fs from 'fs';
+import { extractTextFromPDF } from './server/services/pdfParser.js';
+
+async function test() {
+  // A minimal valid PDF buffer (1-page blank PDF)
+  const pdfBase64 = "JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDMgMCBSL0ZpbHRlci9GbGF0ZURlY29kZT4+CnN0cmVhbQp4nDPQM1Qo5ypUMFAwALJMLU31jBQsTAz1LBSK0rPzFAwVDGAAQQUzI7gckGVkZoRkGZnoGSFZEAsAIVoLiAplbmRzdHJlYW0KZW5kb2JqCgozIDAgb2JqCjMzCmVuZG9iagoKMSAwIG9iago8PC9UeXBlL1BhZ2UvTWVkaWFCb3hbMCAwIDU5NSA4NDJdL1Jlc291cmNlczw8L1Byb2NTZXRbL1BERiAvVGV4dCAvSW1hZ2VCIC9JbWFnZUMgL0ltYWdlSV0+Pi9Db250ZW50cyAyIDAgUi9QYXJlbnQgNCAwIFI+PgplbmRvYmoKCjQgMCBvYmoKPDwvVHlwZS9QYWdlcy9Db3VudCAxL0tpZHNbMSAwIFJdPj4KZW5kb2JqCgo1IDAgb2JqCjw8L1R5cGUvQ2F0YWxvZy9QYWdlcyA0IDAgUj4+CmVuZG9iagoKNyAwIG9iago8PC9Qcm9kdWNlcihqc21pdGgvQkNMIEVhc3lQREYpL0NyZWF0aW9uRGF0ZShEOjIwMDYwMzE2MTAzNzQxRyk+PgplbmRvYmoKCnhyZWYKMCA4CjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDEzNyAwMDAwMCBuIAowMDAwMDAwMDE5IDAwMDAwIG4gCjAwMDAwMDAxMTYgMDAwMDAgbiAKMDAwMDAwMDI1OCAwMDAwMCBuIAowMDAwMDAwMzE1IDAwMDAwIG4gCjAwMDAwMDAwMDAgNjU1MzUgZiAKMDAwMDAwMDM2NCAwMDAwMCBuIAp0cmFpbGVyCjw8L1NpemUgOC9Sb290IDUgMCBSL0luZm8gNyAwIFIvSUQgWzw1RTRERkNBNEFGQjg0NEVGOTIzMjIxRjJFMjhCOUVDNT4gPDM4REY5MzhFRTc4MjE4RDlEQTYzRUExQjFENDkxRTNCPl0+PgpzdGFydHhyZWYKNDYzCiUlRU9GCg==";
+  const buffer = Buffer.from(pdfBase64, 'base64');
+  try {
+    const result = await extractTextFromPDF(buffer);
+    console.log("SUCCESS!", result);
+  } catch (err) {
+    console.error("FAIL!", err);
+  }
+}
+
+test();
