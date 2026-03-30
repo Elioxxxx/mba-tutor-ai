@@ -78,10 +78,11 @@ router.post('/', async (req, res) => {
         .eq('id', submissionId);
     }
 
-    // 获取所有导师标签
+    // 获取所有导师标签（仅取有论文题目的，排除无题目数据的老师）
     const { data: teachers, error: teacherError } = await supabase
       .from('teacher_tags')
-      .select('*');
+      .select('*')
+      .not('thesis_titles', 'eq', '{}');
 
     if (teacherError || !teachers?.length) {
       return res.status(500).json({ error: '导师数据未加载' });

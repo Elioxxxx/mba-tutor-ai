@@ -12,6 +12,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await supabase
       .from('teacher_tags')
       .select('id, name, discipline')
+      .not('thesis_titles', 'eq', '{}')
       .order('name');
 
     if (error) {

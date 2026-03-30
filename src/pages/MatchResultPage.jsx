@@ -36,7 +36,7 @@ export default function MatchResultPage({ matchData, onRestart }) {
             为你推荐的导师
           </h1>
           <p className="text-slate-500 text-sm max-w-md mx-auto">
-            AI 从 117 位导师中筛选出以下最匹配的推荐
+            AI 从 95 位导师中筛选出以下最匹配的推荐
           </p>
         </div>
 

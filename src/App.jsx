@@ -58,7 +58,7 @@ function App() {
           <div className="text-center">
             <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-6" />
             <h2 className="text-xl font-semibold text-slate-800 mb-2">正在匹配最佳导师...</h2>
-            <p className="text-slate-500 text-sm">AI 正在从 117 位导师中筛选最匹配的推荐</p>
+            <p className="text-slate-500 text-sm">AI 正在从 95 位导师中筛选最匹配的推荐</p>
           </div>
         </div>
       )}
