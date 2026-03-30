@@ -1,16 +1,87 @@
-# React + Vite
+项目旨在彻底解决 MBA 学生在“论文导师双选”环节中面临的“信息差大、自身定位模糊、盲目选择导致后期痛苦”的难题。通过引入大语言模型（MiniMax）和深度的导师画像标签库，为每一位 MBA 学生提供个性化、咨询级别的“诊断+匹配”服务。
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一、 产品概述 (Product Overview)
+1.1 产品定位
+一款专为 MBA/EMBA 学生打造的 “AI 学术与履历双向适配引擎”。这不仅是一个搜索工具，而是一位“虚拟教务专家”。它通过深度解析学生的过往行业经验和现实管理痛点，跨界匹配最契合的导师研究方向，并直接生成可落地的“初步论文选题建议”。
 
-Currently, two official plugins are available:
+1.2 目标用户与核心痛点
+目标用户：面临毕业论文开题、急需选定开题导师的 MBA 商科研究生。
+痛点分析：
+海量导师无法筛选：学院有上百位导师，学生不知道哪位老师的课题与自己企业的实际困难相关。
+提炼不出学术问题：学生只有“业务吐槽（痛点）”，缺乏将业务问题转化为“学术侧重点”的能力，导致瞎报导师。
+单恋/热点导师扎堆：学生容易盲目追逐名气大的导师，导致名额踩踏，最后被调剂到完全不熟悉领域的导师。
+1.3 核心竞争力
+动态知识驱动：内置 95 位精准打标的导师数据库（涵盖：指导方向、历年论文题目、研究关键词、擅长行业、方法论、指导特质）。
+复合画像剖析：不仅输入条件，更允许学生上传简历 PDF，AI 穿透式阅读提取核心竞争力。
+防盲目指导机制：提供“心仪导师”定点“靶向排雷检测”，以理性的数据分析对冲学生盲目崇拜。
+二、 核心业务流程 (Core Workflow)
+数据库 (Supabase)
+核心 AI (MiniMax)
+后端 API (Express)
+前端 (React)
+MBA 学生
+数据库 (Supabase)
+核心 AI (MiniMax)
+后端 API (Express)
+前端 (React)
+MBA 学生
+填写基本表单 & 业务痛点，上传 PDF 简历
+提交数据 /api/analyze
+简历解析与学生画像构建
+返回结构化学生画像与缺失信息
+展示“学生洞察摘要”，提示待补充项
+(可选)文字补充履历漏洞
+/api/analyze/supplement
+完善该学生的背景理解
+从下拉框选取“心仪导师”（可选）
+确认信息，发起匹配请求
+/api/match
+提取全库 95 名有效导师(带课题)的标签
+输入学生画像 + 95位导师信息 + “心仪导师”名单
+生成 Top 5 榜单与心仪导师专属测评
+持久化存储结果
+返回 AI 诊断与推荐报表
+沉浸式展示匹配理由与具体选题建议
+三、 产品功能详解 (Feature Specifications)
+模块一：多维信息采录舱 (Onboarding & Profiling)
+目标：降噪，提取最高质量的学生诉求
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+PDF 简历解析：支持一键上传简历，后端基于 pdf2json 提取文本。
+动态业务问卷：
+基本盘：姓名、微信号、当前行业、现任职务。
+灵魂拷问：所在企业处于什么阶段？目前遇到的核心业务痛点是什么？面临的团队/资金/战略等管理挑战是什么？
+模块二：AI 画像折射与反刍 (AI Summary & Refinement)
+目标：在让 AI 去大海捞针之前，先确保 AI “懂你”
 
-## React Compiler
+智能摘要生成：系统并不直接拿着原始文字去匹配导师。第一阶段，AI 会根据上传的资料，先给学生出一份“简历诊断书”，提取学生的：行业坐标、核心痛点、适合的论文大方向、选题关键词。
+动态纠偏机制：向学生展示这份摘要。如果 AI 发现信息缺失（如“不知道你带过几十人团队”、“不知道财务权责”），界面会弹出黄金**【补充提示框】**。学生通过一句话补充，即可让 AI 重新洗牌重塑画像。
+自选入表（意向导师选择）：在数据库有效导师中提供模糊搜索。允许学生在匹配前“下注”自己中意的导师名字。
+模块三：核心双向推演引擎 (AI Mentorship Matcher)
+目标：提供咨询公司级别的 Matching Report 大模型进行并行计算，遵循极为严格的优先级打分逻辑：
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+最高优先：【选题方向匹配】导师历年题目与学生当前企业痛点的交集。
+次优先：【行业场景与关键词】导师的研究领域是否能覆盖学生的行业语境。
+补充优先：【方法论与特质】定量派还是定性派？散养型还是严丝合缝型？
+模块四：高定结果陈列台 (Result Presentation)
+Top 5 推荐榜：生成最具性价比的五位神仙导师。
+信息展示：匹配度(Score)、硬核推荐理由、关键词匹配高亮标签。
+行动转化：结合学生的业务特点，AI 直接由这五位老师的角度出发，“预测”并提供 1-2个可以直接开题的论文题目方向（神来之笔）。
+心仪导师专区双流架构：
+如果心仪导师登榜 Top 5：卡片悬挂 💖 “用户意向” 标签，并注入专属评估意见，证明双向奔赴。
+如果心仪导师落榜 Top 5：在推荐榜下方开辟独立**【未入围导师测评区】**。AI 会非常理智地指出不匹配的风险点（如：“该导师课题纯宏观政策，无法解决你聚焦的 B 端销售转化率问题，存在难以沟通的风险”）。
+四、 系统架构与部署方案 (Architecture & Deployment)
+4.1 技术栈 (Tech Stack)
+前端 (Frontend): React 18 + Vite + TailwindCSS + Lucide Icons + React-Select
+后端 (Backend): Node.js (Express 5.x) + pdf2json 环境兼容处理
+大模型核心 (LLM): MiniMax API (MiniMax-M2.7)，配置了高强度的 System Prompts 和 JSON 输出约束。
+云端数据 (Database): Supabase (PostgreSQL)，使用 RLS (Row Level Security) 隔离环境。
+4.2 数据库实体概念 (Schema)
+teacher_tags:
+核心字段: name, topic_directions, thesis_titles (目前强制过滤，共计 95 名含选题导师), research_keywords, industry_tags, methodology_tags.
+student_submissions:
+储存生命周期: User Input -> Text Extraction -> ai_summary (JSONB) -> status='matched'.
+match_results:
+保存排行榜快照，留作后续宏观数据分析或排位调度依据。
+4.3 物理部署 (DevOps)
+单服务集群 (Single-Service Deployment)：为了降低运管成本，采用将 Vite Build 集成到 Express 根目录 (dist/) 单端口统一下发的架构。
+路由托底策略：所有未被 /api/* 捕获的网络请求，强制交由 index.html，由 React-Router/状态机完成 SPA 内页跳转接管。
