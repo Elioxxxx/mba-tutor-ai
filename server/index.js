@@ -6,6 +6,7 @@ import cors from 'cors';
 import { uploadRouter } from './routes/upload.js';
 import { analyzeRouter } from './routes/analyze.js';
 import { matchRouter } from './routes/match.js';
+import { teachersRouter } from './routes/teachers.js';
 
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,6 +28,7 @@ app.use(express.static(distPath));
 app.use('/api/upload', uploadRouter);
 app.use('/api/analyze', analyzeRouter);
 app.use('/api/match', matchRouter);
+app.use('/api/teachers', teachersRouter);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -34,8 +36,12 @@ app.get('/api/health', (req, res) => {
 });
 
 // 对所有未被 Express API 捕获的路径，返回 index.html，让 React 页面接管路由
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
+app.use((req, res, next) => {
+  if (req.method === 'GET' && req.accepts('html')) {
+    res.sendFile(path.join(distPath, 'index.html'));
+  } else {
+    next();
+  }
 });
 
 app.listen(PORT, () => {

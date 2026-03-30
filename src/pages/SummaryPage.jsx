@@ -1,6 +1,7 @@
-import { useState } from 'react';
-import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Sparkles, User, Briefcase, Target, Tag, Send } from 'lucide-react';
-import { confirmSubmission, matchTeachers, supplementAndReanalyze } from '../api';
+import { useState, useEffect } from 'react';
+import { CheckCircle2, AlertTriangle, ArrowLeft, ArrowRight, Sparkles, User, Briefcase, Target, Tag, Send, Users } from 'lucide-react';
+import Select from 'react-select';
+import { confirmSubmission, matchTeachers, supplementAndReanalyze, getTeachers } from '../api';
 
 export default function SummaryPage({ submissionId, summary, onBack, onConfirmed, onMatched, updateSummary }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -8,8 +9,25 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
   const [supplementaryInfo, setSupplementaryInfo] = useState('');
   const [error, setError] = useState('');
   
+  // 导师选择器状态
+  const [teacherOptions, setTeacherOptions] = useState([]);
+  const [selectedTeachers, setSelectedTeachers] = useState([]);
+
   // Note: App.jsx needs to pass `updateSummary` so we can replace the summary state!
   const p = summary?.studentProfile || {};
+
+  useEffect(() => {
+    // 加载全体导师名单
+    getTeachers()
+      .then(res => {
+        const options = res.teachers.map(t => ({
+          value: t.name,
+          label: `${t.name} (${t.discipline || '无科别'})`
+        }));
+        setTeacherOptions(options);
+      })
+      .catch(err => console.error('Failed to load teachers:', err));
+  }, []);
 
   const handleConfirmAndMatch = async () => {
     setIsLoading(true);
@@ -17,7 +35,8 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
     try {
       await confirmSubmission(submissionId);
       onConfirmed();
-      const matchRes = await matchTeachers(submissionId);
+      const preferredNames = selectedTeachers.map(t => t.value);
+      const matchRes = await matchTeachers(submissionId, preferredNames);
       onMatched(matchRes.result);
     } catch (err) {
       setError(err.message);
@@ -178,6 +197,30 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
             {error}
           </div>
         )}
+
+        {/* 导师期望选项 */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 mb-6">
+          <h2 className="text-sm font-semibold text-slate-800 mb-2 flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-500" /> （可选）指定心仪导师评估
+          </h2>
+          <p className="text-xs text-slate-500 mb-3">
+            如果你心中已有倾向的导师，可以在这里选择（多选）。除了推荐匹配度最高的导师，AI 还会特地为你分析这些心仪导师与你的匹配度。
+          </p>
+          <div className="relative text-sm">
+            <Select
+              isMulti
+              name="preferredTeachers"
+              options={teacherOptions}
+              className="basic-multi-select"
+              classNamePrefix="select"
+              placeholder="🔍 搜索并选择导师姓名..."
+              value={selectedTeachers}
+              onChange={setSelectedTeachers}
+              isDisabled={isLoading}
+              noOptionsMessage={() => (teacherOptions.length === 0 ? "加载导师名单..." : "未找到匹配导师")}
+            />
+          </div>
+        </div>
 
         {/* Actions */}
         <div className="flex gap-3">

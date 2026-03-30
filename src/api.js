@@ -52,11 +52,20 @@ export async function confirmSubmission(submissionId) {
   return res.json();
 }
 
-export async function matchTeachers(submissionId) {
+export async function getTeachers() {
+  const res = await fetch(`${API_BASE}/teachers`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || '获取导师列表失败');
+  }
+  return res.json();
+}
+
+export async function matchTeachers(submissionId, preferredTutors = []) {
   const res = await fetch(`${API_BASE}/match`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ submissionId }),
+    body: JSON.stringify({ submissionId, preferredTutors }),
   });
   if (!res.ok) {
     const err = await res.json();

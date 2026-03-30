@@ -1,9 +1,27 @@
-import { Trophy, Star, Lightbulb, Target, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trophy, Star, Lightbulb, Target, RefreshCw, ChevronDown, ChevronUp, Heart, AlertCircle, Info } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MatchResultPage({ matchData, onRestart }) {
-  const matches = matchData?.matches || [];
+  // 原有的 Top推荐
+  let matches = [...(matchData?.matches || [])];
   const analysis = matchData?.overallAnalysis || '';
+  const preferredAnalysis = matchData?.preferredAnalysis || [];
+
+  // 合并逻辑：找出心仪导师是否在 Top 推荐里
+  const unmatchedPreferred = [];
+
+  preferredAnalysis.forEach(pref => {
+    const existingIndex = matches.findIndex(m => m.teacherName === pref.teacherName);
+    if (existingIndex >= 0) {
+      // 在 Top推荐中 -> 打标记，合并评价
+      matches[existingIndex].isPreferred = true;
+      matches[existingIndex].preferredAnalysisText = pref.analysis;
+      matches[existingIndex].matchDegree = pref.matchDegree;
+    } else {
+      // 不在 Top推荐中 -> 放入独立评估列表
+      unmatchedPreferred.push(pref);
+    }
+  });
 
   return (
     <div className="min-h-screen py-10 px-4">
@@ -35,12 +53,26 @@ export default function MatchResultPage({ matchData, onRestart }) {
           </div>
         )}
 
-        {/* 导师卡片列表 */}
-        <div className="space-y-4">
+        {/* 导师卡片列表 (Top Recommended) */}
+        <div className="space-y-4 mb-10">
           {matches.map((match, idx) => (
             <TeacherCard key={idx} match={match} isTop={idx === 0} />
           ))}
         </div>
+
+        {/* 独立心仪导师评估 (不在推荐列表中) */}
+        {unmatchedPreferred.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+              <Heart className="w-5 h-5 text-rose-500" /> 未入围的心仪导师评估
+            </h2>
+            <div className="space-y-4">
+              {unmatchedPreferred.map((pref, idx) => (
+                <PreferredTeacherCard key={idx} pref={pref} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 重新开始 */}
         <div className="mt-8 text-center">
@@ -70,9 +102,15 @@ function TeacherCard({ match, isTop }) {
     >
       {/* Header */}
       <div
-        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors"
+        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors relative overflow-hidden"
         onClick={() => setExpanded(!expanded)}
       >
+        {match.isPreferred && (
+          <div className="absolute top-0 right-0 px-3 py-1 bg-rose-50 border-b border-l border-rose-100 text-rose-600 text-[10px] font-bold rounded-bl-xl shadow-sm flex items-center gap-1">
+            <Heart className="w-3 h-3 fill-rose-500" /> 用户意向
+          </div>
+        )}
+
         <div className="flex items-center gap-4">
           {/* Rank badge */}
           <div
@@ -85,12 +123,15 @@ function TeacherCard({ match, isTop }) {
             #{match.rank}
           </div>
           <div>
-            <h3 className="text-base font-semibold text-slate-900">{match.teacherName}</h3>
+            <h3 className="text-base font-semibold text-slate-900 flex items-center gap-2">
+              {match.teacherName}
+              {match.isPreferred && <span className="text-rose-500" title="心仪导师命中"><Heart className="w-4 h-4" /></span>}
+            </h3>
             <p className="text-xs text-slate-500 mt-0.5">匹配度 {score}%</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mt-4 sm:mt-0">
           {/* Score bar */}
           <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden hidden sm:block">
             <div
@@ -111,6 +152,16 @@ function TeacherCard({ match, isTop }) {
       {/* Expanded content */}
       {expanded && (
         <div className="px-5 pb-5 border-t border-slate-100">
+          {/* 专属心仪评价 (若匹配中) */}
+          {match.preferredAnalysisText && (
+            <div className="mt-4 mb-4 p-4 bg-rose-50/50 border border-rose-100 rounded-xl">
+              <p className="text-sm font-semibold text-rose-800 flex items-center gap-1.5 mb-2">
+                <Heart className="w-4 h-4 fill-rose-400/30 text-rose-500" /> 专向心仪评估 (契合度：{match.matchDegree})
+              </p>
+              <p className="text-sm text-slate-700 leading-relaxed">{match.preferredAnalysisText}</p>
+            </div>
+          )}
+
           {/* Match reason */}
           <div className="mt-4 mb-4">
             <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1">
@@ -149,6 +200,65 @@ function TeacherCard({ match, isTop }) {
               </div>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// 独立的未入围导师卡片组件
+function PreferredTeacherCard({ pref }) {
+  const [expanded, setExpanded] = useState(false);
+  
+  // 判断契合度颜色
+  const isHigh = pref.matchDegree && pref.matchDegree.includes('高');
+  const isMed = pref.matchDegree && pref.matchDegree.includes('中');
+  
+  const badgeColor = isHigh 
+    ? 'bg-emerald-50 text-emerald-600 border-emerald-200' 
+    : isMed 
+      ? 'bg-amber-50 text-amber-600 border-amber-200'
+      : 'bg-slate-50 text-slate-600 border-slate-200';
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden relative">
+       <div
+        className="p-5 flex items-center justify-between cursor-pointer hover:bg-slate-50/50 transition-colors relative"
+        onClick={() => setExpanded(!expanded)}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-500 shadow-sm">
+            <User className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-semibold text-slate-800">{pref.teacherName}</h3>
+            <div className="flex items-center gap-2 mt-1">
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${badgeColor}`}>
+                契合度: {pref.matchDegree || '未知'}
+              </span>
+              {!isHigh && <span className="text-[10px] text-slate-400 flex items-center gap-0.5"><AlertCircle className="w-3 h-3" />未由于整体不符或名额原因入围该表</span>}
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+           {expanded ? (
+            <ChevronUp className="w-5 h-5 text-slate-400" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
+      </div>
+      
+      {expanded && (
+        <div className="px-5 pb-5 border-t border-slate-100 bg-slate-50/30">
+          <div className="mt-4">
+            <p className="text-xs font-medium text-slate-500 flex items-center gap-1.5 mb-2">
+              <Info className="w-3.5 h-3.5" /> AI 分析评估
+            </p>
+            <p className="text-sm text-slate-700 leading-relaxed bg-white border border-slate-200 p-4 rounded-xl shadow-sm">
+              {pref.analysis}
+            </p>
+          </div>
         </div>
       )}
     </div>
