@@ -4,8 +4,8 @@ import SummaryPage from './pages/SummaryPage';
 import MatchResultPage from './pages/MatchResultPage';
 import './index.css';
 
-// 状态：upload → analyzing → summary → matching → results
-const STEPS = ['upload', 'analyzing', 'summary', 'matching', 'results'];
+// 状态：upload → analyzing → summary → results
+const STEPS = ['upload', 'analyzing', 'summary', 'results'];
 
 function App() {
   const [step, setStep] = useState('upload');
@@ -45,22 +45,12 @@ function App() {
           summary={summaryData}
           updateSummary={setSummaryData}
           onBack={() => setStep('upload')}
-          onConfirmed={() => setStep('matching')}
+          onConfirmed={() => {}}
           onMatched={(results) => {
             setMatchData(results);
             setStep('results');
           }}
         />
-      )}
-
-      {step === 'matching' && (
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-center">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-6" />
-            <h2 className="text-xl font-semibold text-slate-800 mb-2">正在匹配最佳导师...</h2>
-            <p className="text-slate-500 text-sm">AI 正在从 95 位导师中筛选最匹配的推荐</p>
-          </div>
-        </div>
       )}
 
       {step === 'results' && matchData && (
