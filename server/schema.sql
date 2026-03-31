@@ -30,6 +30,7 @@ CREATE TABLE IF NOT EXISTS teacher_tags (
   industry_tags TEXT[] DEFAULT '{}',
   methodology_tags TEXT[] DEFAULT '{}',
   mentor_traits TEXT[] DEFAULT '{}',
+  popularity_count INTEGER DEFAULT 0,
   photo TEXT,
   email TEXT,
   raw_profile JSONB,

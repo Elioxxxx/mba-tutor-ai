@@ -61,6 +61,15 @@ export async function getTeachers() {
   return res.json();
 }
 
+export async function getTopTeachers() {
+  const res = await fetch(`${API_BASE}/teachers/top`);
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error || '获取热榜失败');
+  }
+  return res.json();
+}
+
 export async function matchTeachers(submissionId, preferredTutors = []) {
   const res = await fetch(`${API_BASE}/match`, {
     method: 'POST',

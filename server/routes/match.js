@@ -63,7 +63,7 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: '请先完成 AI 分析步骤' });
     }
 
-    // 保存 preferred_tutors 到 notes 或者专门的逻辑里，这里我们直接将其塞入 userMessage
+    // 保存 preferred_tutors 到 notes，同时去导师表增加人气热度值 (popularity_count)
     if (preferredTutors.length > 0) {
       let notesUpdate = '';
       if (submission.notes) {
@@ -76,6 +76,23 @@ router.post('/', async (req, res) => {
         .from('student_submissions')
         .update({ notes: notesUpdate })
         .eq('id', submissionId);
+
+      // 为这些导师的人气值 + 1
+      for (const tutorName of preferredTutors) {
+        // 先查询现有值
+        const { data: tutor } = await supabase
+          .from('teacher_tags')
+          .select('id, popularity_count')
+          .eq('name', tutorName)
+          .single();
+        
+        if (tutor) {
+          await supabase
+            .from('teacher_tags')
+            .update({ popularity_count: (tutor.popularity_count || 0) + 1 })
+            .eq('id', tutor.id);
+        }
+      }
     }
 
     // 获取所有导师标签（仅取有论文题目的，排除无题目数据的老师）
