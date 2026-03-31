@@ -7,11 +7,10 @@ const router = Router();
 const MATCH_SYSTEM_PROMPT = `你是一位电子科技大学经管学院 MBA 导师匹配专家。你需要根据学生的背景画像，从导师标签库中筛选最匹配的导师并排名。
 
 匹配时请综合考虑以下因素（按重要性排序）：
-1. 【选题方向匹配】导师的 topicDirections 和 thesisTitles 是否与学生的行业/痛点契合
-2. 【研究关键词匹配】导师的 researchKeywords 是否覆盖学生的核心议题
-3. 【行业场景匹配】导师的 industryTags 是否涵盖学生所在行业
-4. 【方法论适配】导师的 methodologyTags 是否适合学生的情况
-5. 【导师特质匹配】导师的 mentorTraits 是否匹配学生的期望
+1. 【选题方向匹配】导师的 td(选题方向) 和 tt(论文题目) 是否与学生的行业/痛点契合
+2. 【研究关键词匹配】导师的 kw(关键词) 是否覆盖学生的核心议题
+3. 【行业场景匹配】导师的 ind(行业标签) 是否涵盖学生所在行业
+4. 导师数据中 n=姓名, d=学科
 
 请严格按以下 JSON 格式输出，推荐 5 位最匹配的导师。
 如果学生指明了【心仪导师名单】，请你必须在 preferredAnalysis 数组中，为每一位心仪导师输出针对性的匹配评估（无论他们是否在排名前5里，都必须单独在这里评估）。
@@ -105,18 +104,18 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: '导师数据未加载' });
     }
 
-    // 构建导师信息（精简版，避免 token 过多）
-    const teacherSummary = teachers.map(t => ({
-      name: t.name,
-      discipline: t.discipline,
-      academicRank: t.academic_rank,
-      topicDirections: t.topic_directions,
-      thesisTitles: t.thesis_titles,
-      researchKeywords: t.research_keywords,
-      industryTags: t.industry_tags,
-      methodologyTags: t.methodology_tags,
-      mentorTraits: t.mentor_traits,
-    }));
+    // 构建导师信息（极简版，大幅缩减 token 避免超时）
+    const teacherSummary = teachers.map(t => {
+      const titles = (t.thesis_titles || []).slice(0, 5); // 最多取5个题目
+      return {
+        n: t.name,
+        d: t.discipline || '',
+        td: (t.topic_directions || []).join('/'),
+        tt: titles.join('/'),
+        kw: (t.research_keywords || []).join('/'),
+        ind: (t.industry_tags || []).join('/'),
+      };
+    });
 
     // 组装 Prompt
     const parts = [
@@ -152,7 +151,7 @@ router.post('/', async (req, res) => {
     const matchResult = await callMiniMaxJSON(
       MATCH_SYSTEM_PROMPT, 
       userMessage,
-      { temperature: 0.2, maxTokens: 4096 }
+      { temperature: 0.2, maxTokens: 8192 }
     );
 
     // 存储匹配结果
