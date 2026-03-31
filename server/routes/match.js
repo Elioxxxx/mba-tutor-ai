@@ -106,32 +106,37 @@ router.post('/', async (req, res) => {
       return res.status(500).json({ error: '导师数据未加载' });
     }
 
-    // 构建导师信息（极简版，大幅缩减 token 避免超时）
+    // 构建导师信息（极致压缩版，严格防砍断）
     const teacherSummary = teachers.map(t => {
-      const titles = (t.thesis_titles || []).slice(0, 5); // 最多取5个题目
+      // 限制每个数组的长度，过滤掉多余的“长尾”标签以免爆炸
+      const titles = (t.thesis_titles || []).slice(0, 3);
+      const dirs = (t.topic_directions || []).slice(0, 3);
+      const kws = (t.research_keywords || []).slice(0, 5);
+      const inds = (t.industry_tags || []).slice(0, 3);
+
       return {
         n: t.name,
         d: t.discipline || '',
-        td: (t.topic_directions || []).join('/'),
+        td: dirs.join('/'),
         tt: titles.join('/'),
-        kw: (t.research_keywords || []).join('/'),
-        ind: (t.industry_tags || []).join('/'),
+        kw: kws.join('/'),
+        ind: inds.join('/'),
       };
     });
 
     // 组装 Prompt
     const parts = [
       '【学生画像】',
-      JSON.stringify(submission.ai_summary, null, 2),
+      JSON.stringify(submission.ai_summary), // 移除美化打印，节约海量空白字符 Token
       '',
       '【学生原始诉求】',
-      submission.requirements,
+      (submission.requirements || '').substring(0, 800), // 强制截断，不超过800字
       ''
     ];
 
     if (submission.notes) {
       parts.push('【学生补充备注】');
-      parts.push(submission.notes);
+      parts.push(submission.notes.substring(0, 600)); // 强制截断
       parts.push('');
     }
 
@@ -145,7 +150,8 @@ router.post('/', async (req, res) => {
     parts.push('---');
     parts.push('');
     parts.push(`【导师标签库（共 ${teacherSummary.length} 位导师）】`);
-    parts.push(JSON.stringify(teacherSummary, null, 2));
+    // 彻底摒弃漂亮打印 (null, 2)，挤压成一行极其致密的 JSON 文本
+    parts.push(JSON.stringify(teacherSummary));
 
     const userMessage = parts.join('\n');
 
