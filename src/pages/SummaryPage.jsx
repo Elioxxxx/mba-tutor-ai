@@ -99,6 +99,18 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
           </div>
         </div>
 
+        {/* 个人总结 — 国家级 HR 视角 */}
+        {p.personalSummary && (
+          <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/60 p-5 rounded-2xl border border-blue-100/80 mb-4">
+            <h2 className="text-base font-semibold text-slate-800 mb-2.5 flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-indigo-500" /> 个人总结
+            </h2>
+            <p className="text-sm text-slate-700 leading-relaxed">
+              {p.personalSummary}
+            </p>
+          </div>
+        )}
+
         {/* 企业与痛点 */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 mb-4">
           <h2 className="text-base font-semibold text-slate-800 mb-3 flex items-center gap-2">
