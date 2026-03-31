@@ -16,8 +16,28 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
   // Note: App.jsx needs to pass `updateSummary` so we can replace the summary state!
   const p = summary?.studentProfile || {};
 
+  const [loadingStep, setLoadingStep] = useState(0);
+  const loadingMessages = [
+    "正在全盘扫读 95 位名师的履历与论文命题...",
+    "正在应用大模型推理，计算多维契合度...",
+    "正在评估您指定的「心仪导师」...",
+    "正在撰写推荐导师评估深度报告..."
+  ];
+
   useEffect(() => {
-    // 加载全体导师名单
+    let interval;
+    if (isLoading) {
+      interval = setInterval(() => {
+        setLoadingStep((prev) => (prev + 1) % loadingMessages.length);
+      }, 3500);
+    } else {
+      setLoadingStep(0);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading]);
+
+  // 获取全体导师名单
+  useEffect(() => {
     getTeachers()
       .then(res => {
         const options = res.teachers.map(t => ({
@@ -31,6 +51,7 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
 
   const handleConfirmAndMatch = async () => {
     setIsLoading(true);
+    setLoadingStep(0);
     setError('');
     try {
       await confirmSubmission(submissionId);
@@ -69,7 +90,7 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
   );
 
   return (
-    <div className="min-h-screen py-10 px-4">
+    <div className="min-h-screen py-10 px-4 relative">
       <div className="max-w-2xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -234,35 +255,45 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-3">
-          <button
-            type="button"
-            onClick={onBack}
-            disabled={isLoading || isReanalyzing}
-            className="flex-1 py-3 bg-white border border-slate-200 text-slate-700 font-medium text-sm rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            返回补充材料
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirmAndMatch}
-            disabled={isLoading || isReanalyzing}
-            className="flex-[2] py-3 bg-slate-900 hover:bg-blue-600 disabled:bg-slate-400 text-white font-medium text-sm rounded-xl shadow-lg shadow-slate-900/10 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed group"
-          >
-            {isLoading ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                正在匹配导师...
-              </>
-            ) : (
-              <>
-                确认信息，开始匹配
+        {/* Actions 动态加载区 */}
+        <div className="relative">
+          {isLoading ? (
+            <div className="w-full py-8 px-6 bg-slate-900 text-white font-medium rounded-xl shadow-lg shadow-slate-900/10 flex flex-col items-center justify-center gap-4 animate-pulse">
+              <div className="relative w-8 h-8">
+                <div className="absolute inset-0 border-4 border-blue-500/30 rounded-full"></div>
+                <div className="absolute inset-0 border-4 border-blue-400 rounded-full border-t-transparent animate-spin"></div>
+              </div>
+              <div className="text-center space-y-1.5">
+                <p className="text-sm font-medium text-blue-100 transition-all duration-300">
+                  {loadingMessages[loadingStep]}
+                </p>
+                <p className="text-xs text-slate-400">
+                  ⚠️ AI 计算量巨大，请勿刷新页面，此过程大约需要 1 分钟
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onBack}
+                disabled={isReanalyzing}
+                className="flex-1 py-3.5 bg-white border border-slate-200 text-slate-700 font-medium text-sm rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                返回修改
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmAndMatch}
+                disabled={isReanalyzing}
+                className="flex-[2] py-3.5 bg-slate-900 hover:bg-blue-600 text-white font-medium text-sm rounded-xl shadow-lg shadow-slate-900/10 transition-all flex items-center justify-center gap-2 cursor-pointer group"
+              >
+                确认信息，开始匹配名师
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-              </>
-            )}
-          </button>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
