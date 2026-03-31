@@ -57,10 +57,23 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
       await confirmSubmission(submissionId);
       onConfirmed();
       const preferredNames = selectedTeachers.map(t => t.value);
-      const matchRes = await matchTeachers(submissionId, preferredNames);
+
+      // 前端 90 秒超时保护，防止 Render 网关或大模型无限挂起
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('匹配请求超时，请稍后再试。若反复超时请联系管理员。')), 90000)
+      );
+      const matchRes = await Promise.race([
+        matchTeachers(submissionId, preferredNames),
+        timeout,
+      ]);
+
+      // 安全校验：确保 AI 返回了有效的匹配数据
+      if (!matchRes?.result?.matches) {
+        throw new Error('AI 返回了不完整的匹配结果，请重新尝试');
+      }
       onMatched(matchRes.result);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || '匹配过程出现未知错误，请刷新页面后重试');
       setIsLoading(false);
     }
   };

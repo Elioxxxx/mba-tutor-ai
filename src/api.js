@@ -71,14 +71,34 @@ export async function getTopTeachers() {
 }
 
 export async function matchTeachers(submissionId, preferredTutors = []) {
-  const res = await fetch(`${API_BASE}/match`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ submissionId, preferredTutors }),
-  });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.error || '匹配失败');
+  let res;
+  try {
+    res = await fetch(`${API_BASE}/match`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ submissionId, preferredTutors }),
+    });
+  } catch (networkErr) {
+    throw new Error('网络连接失败，请检查网络后重试');
   }
-  return res.json();
+
+  if (!res.ok) {
+    // 服务器可能返回 HTML 错误页面（如 Render 超时），安全解析
+    let errMsg = `匹配失败 (${res.status})`;
+    try {
+      const errBody = await res.json();
+      errMsg = errBody.error || errMsg;
+    } catch (_) {
+      // 无法解析为 JSON，使用默认错误信息
+    }
+    throw new Error(errMsg);
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (_) {
+    throw new Error('AI 返回了无效的响应格式，请稍后重试');
+  }
+  return data;
 }
