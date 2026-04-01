@@ -11,6 +11,7 @@
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_MODEL = process.env.MINIMAX_MODEL || 'MiniMax-Text-01';
 const MINIMAX_API_URL = 'https://api.minimaxi.com/v1/text/chatcompletion_v2';
+const MINIMAX_EMBEDDING_URL = 'https://api.minimax.chat/v1/embeddings';
 
 if (!MINIMAX_API_KEY) {
   console.warn('⚠️  Missing MINIMAX_API_KEY in .env — AI features will not work');
@@ -79,4 +80,43 @@ export async function callMiniMaxJSON(systemPrompt, userMessage, options = {}) {
     console.error('Failed to parse MiniMax JSON response:', reply);
     throw new Error('MiniMax returned non-JSON response');
   }
+}
+
+/**
+ * 调用 MiniMax Embeddings API 生成语义特征向量
+ * @param {string} text - 需要语义化编码的文本
+ * @param {string} type - 向量用途 ('db' 存入数据库, 'query' 用于检索匹配)
+ * @returns {Promise<number[]>} - 1536 维度的数学向量
+ */
+export async function getMiniMaxEmbedding(text, type = 'db') {
+  if (!text || !text.trim()) {
+    throw new Error('Embedding 文本不能为空');
+  }
+  
+  const response = await fetch(MINIMAX_EMBEDDING_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${MINIMAX_API_KEY}`,
+    },
+    body: JSON.stringify({
+      model: 'embo-01',
+      texts: [text.trim()],
+      type: type,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`MiniMax Embedding API error (${response.status}): ${errorText}`);
+  }
+
+  const data = await response.json();
+  const vector = data.vectors?.[0];
+  
+  if (!vector || !Array.isArray(vector)) {
+    throw new Error('MiniMax returned invalid embedding vector');
+  }
+  
+  return vector;
 }
