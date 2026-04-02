@@ -58,9 +58,9 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
       onConfirmed();
       const preferredNames = selectedTeachers.map(t => t.value);
 
-      // 前端 90 秒超时保护，防止 Render 网关或大模型无限挂起
+      // 前端 120 秒超时保护（从90s增加到120s，给MiniMax充足的响应时间）
       const timeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('匹配请求超时，请稍后再试。若反复超时请联系管理员。')), 90000)
+        setTimeout(() => reject(new Error('匹配请求超时，请稍后再试。若反复超时请联系管理员。')), 120000)
       );
       const matchRes = await Promise.race([
         matchTeachers(submissionId, preferredNames),
@@ -68,11 +68,15 @@ export default function SummaryPage({ submissionId, summary, onBack, onConfirmed
       ]);
 
       // 安全校验：确保 AI 返回了有效的匹配数据
-      if (!matchRes?.result?.matches) {
+      if (!matchRes?.result?.matches || !Array.isArray(matchRes.result.matches) || matchRes.result.matches.length === 0) {
         throw new Error('AI 返回了不完整的匹配结果，请重新尝试');
       }
+      
+      // 成功后先重置 loading 状态，再切换页面
+      setIsLoading(false);
       onMatched(matchRes.result);
     } catch (err) {
+      console.error('[Match] Error:', err);
       setError(err.message || '匹配过程出现未知错误，请刷新页面后重试');
       setIsLoading(false);
     }

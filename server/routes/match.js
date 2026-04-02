@@ -196,12 +196,19 @@ router.post('/', async (req, res) => {
     const userMessage = parts.join('\n');
     console.log(`[Match] Prompt length: ${userMessage.length} chars (was ~${allTeachers.length * 120} before RAG)`);
 
-    // 调用 MiniMax 进行匹配
-    const matchResult = await callMiniMaxJSON(
-      MATCH_SYSTEM_PROMPT, 
-      userMessage,
-      { temperature: 0.2, maxTokens: 4096 }
+    // 调用 MiniMax 进行匹配（带 100 秒超时保护）
+    const llmTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('AI 推理超时（超过100秒），请稍后重试')), 100000)
     );
+    
+    const matchResult = await Promise.race([
+      callMiniMaxJSON(
+        MATCH_SYSTEM_PROMPT, 
+        userMessage,
+        { temperature: 0.2, maxTokens: 4096 }
+      ),
+      llmTimeout,
+    ]);
 
     const totalTime = Date.now() - startTime;
     console.log(`[Match] Phase 2 complete. Total time: ${totalTime}ms`);
