@@ -1,4 +1,4 @@
-import { Trophy, Star, Lightbulb, Target, RefreshCw, ChevronDown, ChevronUp, Heart, AlertCircle, Info } from 'lucide-react';
+import { Trophy, Star, Lightbulb, Target, RefreshCw, ChevronDown, ChevronUp, Heart, AlertCircle, Info, User } from 'lucide-react';
 import { useState } from 'react';
 
 export default function MatchResultPage({ matchData, onRestart }) {

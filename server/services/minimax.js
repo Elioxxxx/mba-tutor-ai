@@ -11,7 +11,7 @@
 const MINIMAX_API_KEY = process.env.MINIMAX_API_KEY;
 const MINIMAX_MODEL = process.env.MINIMAX_MODEL || 'MiniMax-Text-01';
 const MINIMAX_API_URL = 'https://api.minimaxi.com/v1/text/chatcompletion_v2';
-const MINIMAX_EMBEDDING_URL = 'https://api.minimax.chat/v1/embeddings';
+const MINIMAX_EMBEDDING_URL = 'https://api.minimaxi.com/v1/embeddings';
 
 if (!MINIMAX_API_KEY) {
   console.warn('⚠️  Missing MINIMAX_API_KEY in .env — AI features will not work');
@@ -112,10 +112,21 @@ export async function getMiniMaxEmbedding(text, type = 'db') {
   }
 
   const data = await response.json();
-  const vector = data.vectors?.[0];
+  
+  // 兼容两种返回格式
+  // OpenAI 格式: { data: [{ embedding: [...] }] }
+  // MiniMax 旧格式: { vectors: [[...]] }
+  let vector = null;
+  if (data.data?.[0]?.embedding) {
+    vector = data.data[0].embedding;
+  } else if (data.vectors?.[0] && Array.isArray(data.vectors[0])) {
+    vector = data.vectors[0];
+  } else if (data.vectors && Array.isArray(data.vectors) && typeof data.vectors[0] === 'number') {
+    vector = data.vectors;
+  }
   
   if (!vector || !Array.isArray(vector)) {
-    throw new Error('MiniMax returned invalid embedding vector');
+    throw new Error('MiniMax returned invalid embedding vector: ' + JSON.stringify(data).substring(0, 200));
   }
   
   return vector;

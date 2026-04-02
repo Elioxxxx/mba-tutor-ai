@@ -9,6 +9,7 @@
     "dev:client": "vite",
     "dev:server": "node --env-file=.env server/index.js",
     "seed": "node server/scripts/seedTeachers.js",
+    "init-embeddings": "node server/scripts/init_embeddings.js",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
