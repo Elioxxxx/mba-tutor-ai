@@ -4,38 +4,72 @@ import { supabase } from '../services/supabase.js';
 
 const router = Router();
 
-const SUMMARY_SYSTEM_PROMPT = `你是一位资深的 MBA 学术顾问。你的任务是分析学生提交的简历和企业介绍材料，生成一份结构化的学术背景摘要。
+// ==========================================
+// 极端压缩输出并双轨并发的系统提示词
+// ==========================================
 
-请严格按以下 JSON 格式输出：
+// 提示词 A: 专注于个人背景与经历 (输出占比小，生成极快)
+const PROMPT_PROFILE = `你是资深MBA专家。分析以下学生的简历、企业介绍等材料。
+提取基础背景并进行个人简评。
+严格输出JSON：
 {
   "studentProfile": {
-    "name": "姓名（如能从简历中提取）",
-    "industry": "所在行业",
-    "currentRole": "当前职务",
-    "yearsOfExperience": "工作年限（数字或估算）",
-    "companyStage": "企业阶段（初创期/成长期/成熟期/体制内）",
-    "companyDescription": "企业简述（1-2句话）",
-    "coreBusinessPainPoints": "核心业务痛点（基于材料分析）",
-    "managementChallenges": "管理挑战（从材料推断）",
-    "personalSummary": "以国家级人力资源负责人的视角，对该候选人的职业履历进行一段专业、客观、有洞察力的总结（严格限制在150字以内，纯文本）。要点评候选人的核心竞争力、职业转型特点、行业影响力潜质，并从 MBA 学术研究的角度指出其最有价值的实践经验。"
+    "name": "姓名(如能提取)",
+    "industry": "行业(10字以内)",
+    "currentRole": "主干职务(10字以内)",
+    "yearsOfExperience": "工作年限估算(如: 8年)",
+    "companyStage": "企业阶段(初创/成长/成熟/体制内)",
+    "companyDescription": "企业主营(20字以内)",
+    "personalSummary": "提炼候选人职业优势和商科研究潜力(最高优先级：必须极其精炼，严禁废话，限制在50字左右的短句！)"
   },
-  "suggestedKeywords": ["关键词1", "关键词2", "...（5-10个与论文选题相关的关键词）"],
-  "missingInfo": [
-    "缺少的信息1（例如：未提及管理年限）",
-    "缺少的信息2"
-  ],
-  "initialDirection": "基于以上信息，建议的论文大致方向（1-2句话）"
+  "missingInfo": ["未提及信息1(如:缺具体职级)", "未提及信息2"]
 }
+注意：输出必须是合法且单纯的JSON，不可包含任何外部文字或Markdown框。找不到填"未提及"。`;
 
-注意：
-- 如果某项信息在材料中找不到，填写 "未提及" 而不是编造
-- missingInfo 要列出对匹配导师有帮助但材料中缺失的关键信息
-- suggestedKeywords 应该是与商科论文选题相关的关键词
-- personalSummary 必须以第三人称撰写，语气沉稳、专业、有分量，像猎头公司给董事会的候选人评估报告。必须严格控制在 150 字以内，且内部绝对不可包含换行符（\n）或未转义的双引号（"），以防破坏 JSON 格式！`;
+// 提示词 B: 专注于痛点挑战与论文方向 (输出极小)
+const PROMPT_DIRECTION = `你是资深MBA专家。分析以下学生的简历、企业介绍等材料。
+提取核心业务痛点、管理挑战，并推荐论文方向。
+严格输出JSON格式，且所有文本必须是"短语或短句"，禁止长篇大论：
+{
+  "studentProfile": {
+    "coreBusinessPainPoints": "核心业务痛点(最多3个短语词条)",
+    "managementChallenges": "核心管理挑战(最多3个短语词条)"
+  },
+  "suggestedKeywords": ["论文关键词1", "关键词2", "关键词3", "关键词4", "关键词5"],
+  "initialDirection": "推荐论文破解大方向(一句话纯干货，20字内)"
+}
+注意：输出必须是合法且单纯的JSON，不可包含任何外部文字或Markdown框。找不到填"未提及"。`;
+
+/**
+ * 封装并行的分析逻辑核心函数
+ * 无损阅读所有上下文，但由两个大模型拆分输出，时间缩短一半。
+ * @param {string} userMessage - 拼装好的全部原始材料
+ * @returns {Promise<object>} 拼装完成的综合画像
+ */
+async function performConcurrentAnalysis(userMessage) {
+  // 同时发动两次请求，并行处理，互相不等待
+  const [resProfile, resDirection] = await Promise.all([
+    callMiniMaxJSON(PROMPT_PROFILE, userMessage, { temperature: 0.2, maxTokens: 800 }),
+    callMiniMaxJSON(PROMPT_DIRECTION, userMessage, { temperature: 0.2, maxTokens: 800 })
+  ]);
+
+  // 将两个短而快的 JSON 结果深层合并
+  const summary = {
+    studentProfile: {
+      ...(resProfile.studentProfile || {}),
+      ...(resDirection.studentProfile || {})
+    },
+    missingInfo: resProfile.missingInfo || [],
+    suggestedKeywords: resDirection.suggestedKeywords || [],
+    initialDirection: resDirection.initialDirection || ''
+  };
+
+  return summary;
+}
 
 /**
  * POST /api/analyze
- * 接收 submissionId，调用 MiniMax 生成学生画像摘要
+ * 首轮上传个人材料分析
  */
 router.post('/', async (req, res) => {
   try {
@@ -45,7 +79,6 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: '缺少 submissionId' });
     }
 
-    // 从数据库获取提交数据
     const { data: submission, error: fetchError } = await supabase
       .from('student_submissions')
       .select('*')
@@ -56,7 +89,7 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: '未找到提交记录' });
     }
 
-    // 组装给 LLM 的用户消息
+    // 无损组装完整原始素材
     const parts = [];
     if (submission.extracted_text?.resume) {
       parts.push(`【个人简历内容】\n${submission.extracted_text.resume}`);
@@ -71,13 +104,9 @@ router.post('/', async (req, res) => {
 
     const userMessage = parts.join('\n\n---\n\n');
 
-    // 调用 MiniMax
-    const summary = await callMiniMaxJSON(SUMMARY_SYSTEM_PROMPT, userMessage, {
-      temperature: 0.3,
-      maxTokens: 4096,
-    });
+    // 并发分析核心逻辑
+    const summary = await performConcurrentAnalysis(userMessage);
 
-    // 更新数据库
     const { error: updateError } = await supabase
       .from('student_submissions')
       .update({ 
@@ -103,7 +132,7 @@ router.post('/', async (req, res) => {
 
 /**
  * POST /api/analyze/supplement
- * 接收额外补充信息并重新由于生成摘要
+ * 修改/补充信息后重新分析
  */
 router.post('/supplement', async (req, res) => {
   try {
@@ -113,7 +142,6 @@ router.post('/supplement', async (req, res) => {
       return res.status(400).json({ error: '缺少必需的参数' });
     }
 
-    // 获取并追加补充信息
     const { data: submission, error: fetchError } = await supabase
       .from('student_submissions')
       .select('*')
@@ -124,17 +152,16 @@ router.post('/supplement', async (req, res) => {
       return res.status(404).json({ error: '未找到提交记录' });
     }
 
-    // 更新 notes：将原本的备注与新补充的信息合并
     const newNotes = submission.notes 
-      ? `${submission.notes}\n\n【用户在摘要页的后续补充】：\n${supplementaryInfo}`
-      : `【用户在摘要页补充信息】：\n${supplementaryInfo}`;
+      ? `${submission.notes}\n\n【用户在画像页后的补充说明】：\n${supplementaryInfo}`
+      : `【用户在画像页补充说明】：\n${supplementaryInfo}`;
 
     await supabase
       .from('student_submissions')
       .update({ notes: newNotes })
       .eq('id', submissionId);
 
-    // 重新组装用户消息
+    // 重新组合全部材料，准备复核
     const parts = [];
     if (submission.extracted_text?.resume) {
       parts.push(`【个人简历内容】\n${submission.extracted_text.resume}`);
@@ -142,18 +169,14 @@ router.post('/supplement', async (req, res) => {
     if (submission.extracted_text?.company) {
       parts.push(`【企业介绍内容】\n${submission.extracted_text.company}`);
     }
-    parts.push(`【学生补充备注】\n${newNotes}`);
-    parts.push(`【学生找导师的诉求】\n${submission.requirements}`);
+    parts.push(`【学生补充备注及重点修改指示】\n${newNotes}`);
+    parts.push(`【找导师的初始诉求】\n${submission.requirements}`);
 
     const userMessage = parts.join('\n\n---\n\n');
 
-    // 重新调用 MiniMax
-    const summary = await callMiniMaxJSON(SUMMARY_SYSTEM_PROMPT, userMessage, {
-      temperature: 0.3,
-      maxTokens: 4096,
-    });
+    // 重新并发分析
+    const summary = await performConcurrentAnalysis(userMessage);
 
-    // 存入最新的 ai_summary
     await supabase
       .from('student_submissions')
       .update({ ai_summary: summary })
@@ -172,7 +195,7 @@ router.post('/supplement', async (req, res) => {
 
 /**
  * POST /api/analyze/confirm
- * 学生确认摘要完整，标记为 confirmed
+ * 确认摘要无误
  */
 router.post('/confirm', async (req, res) => {
   try {
