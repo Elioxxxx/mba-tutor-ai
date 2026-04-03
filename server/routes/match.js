@@ -5,18 +5,27 @@ import { rankTeachersBySimilarity } from '../services/similarity.js';
 
 const router = Router();
 
-const EVAL_SYSTEM_PROMPT = `你是MBA导师匹配专家。请根据提供的学生背景，深度评估下方指定的【唯一导师】与该学生的契合度。
-重点考察：1.选题方向匹配 2.研究关键词相符 3.行业场景匹配度
-如果老师是【学生指定的心仪导师】，不论分数高低，都必须写一段不少于100字的深度分析说明(preferredAnalysisText)。
+const EVAL_SYSTEM_PROMPT = `你是顶尖MBA导师匹配专家。请根据提供的学生背景，极度详实、深度地评估下方指定的【唯一导师】与该学生的契合度。
+重点考察：1.选题方向匹配 2.研究关键词相符 3.行业场景匹配度。
+如果老师是【学生指定的心仪导师】，不论分数高低，都必须写一段不少于150字的深度全方位测评，指出绝对契合点及可能不契合的风险。
 
 严格返回以下JSON格式（严禁返回Markdown代码块或其他无关内容，只能输出合法JSON对象）：
 {
   "teacherName": "该导师姓名",
   "matchScore": 88, 
-  "matchReason": "推荐理由(详细阐述约100字，重点讲为什么匹配该学生，从行业背景、研究痛点、过往经历等角度进行深度分析)",
-  "suggestedTopics": ["结合两者提供具体的、带学术深度的论文方向建议1", "极具参考价值的深度方向建议2", "深度方向建议3"],
-  "keyMatchPoints": ["详细明确的匹配亮点1(如：拥有零售数字化转型一线经验)", "详细明确的匹配亮点2", "详细明确的匹配亮点3"],
-  "preferredAnalysisText": "仅当系统文字提示该导师为心仪导师时输出此字段，做大概100-150字的深度对比优劣势评估(如果不匹配也要直接深度指出差异细节)",
+  "matchReason": "推荐理由（必须是一段近200字的深度分析段落。必须结合学生的企业痛点、行业阶段，深入剖析导师的研究方向如何为学生提供理论支撑或方法论参考。此外，【必须】在段落后半部分指出匹配的局限性或需注意的问题，如“然而需注意的是，导师研究偏向...可能对...有限，建议学生结合...进行定向深化”）。",
+  "suggestedTopics": [
+    "【具体且极具学术深度的MBA论文题目1，如：XX技术创业企业XX转型路径研究——基于XX与XX的融合视角】", 
+    "【深度论文题目2】", 
+    "【深度论文题目3】"
+  ],
+  "keyMatchPoints": [
+    "导师的[某研究方向]可为学生探索[某痛点]提供[什么支撑或战略框架]（具体长句，至少20字）", 
+    "导师的[某理论基础]能够支持学生设计[某演进路径]（具体长句，至少20字）", 
+    "导师的[某积累]与学生正在进行的[某产业实践]形成理论与实践的双向验证（具体长句，至少20字）",
+    "导师的[某方向]可为学生优化[某环节]提供方法论指导（具体长句，至少20字）"
+  ],
+  "preferredAnalysisText": "仅当系统文字提示该导师为心仪导师时输出此字段，做150字以上的全方位测评，既详述高度契合点，也必须直白指出偏离的风险环节。",
   "matchDegree": "高" 
 }
 注: matchScore 是 0-100 的整数。matchDegree 必须是 高/中/低 三个字之一。`;
@@ -145,7 +154,7 @@ router.post('/', async (req, res) => {
       // 附加一个空的 catch 防止 Node 抛出 UnhandledPromiseRejection 导致服务器整体崩溃
       timeoutPromise.catch(() => {});
 
-      const fetchPromise = callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 1000 });
+      const fetchPromise = callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 2000 });
       fetchPromise.catch(() => {});
 
       try {
