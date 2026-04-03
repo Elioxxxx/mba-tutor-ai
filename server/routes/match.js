@@ -5,19 +5,18 @@ import { rankTeachersBySimilarity } from '../services/similarity.js';
 
 const router = Router();
 
-// 每位导师独立评估的系统提示词（Map阶段使用）
-const EVAL_SYSTEM_PROMPT = `你是MBA导师匹配专家。请根据提供的学生背景，评估下方指定的【唯一导师】与该学生的契合度。
+const EVAL_SYSTEM_PROMPT = `你是MBA导师匹配专家。请根据提供的学生背景，深度评估下方指定的【唯一导师】与该学生的契合度。
 重点考察：1.选题方向匹配 2.研究关键词相符 3.行业场景匹配度
-如果老师是【学生指定的心仪导师】，不论分数高低，都必须写一段不少于30字的分析说明(preferredAnalysisText)。
+如果老师是【学生指定的心仪导师】，不论分数高低，都必须写一段不少于100字的深度分析说明(preferredAnalysisText)。
 
 严格返回以下JSON格式（严禁返回Markdown代码块或其他无关内容，只能输出合法JSON对象）：
 {
   "teacherName": "该导师姓名",
   "matchScore": 88, 
-  "matchReason": "理由(50字以内，重点讲为什么匹配该学生)",
-  "suggestedTopics": ["结合两者的论文方向建议1", "建议方向2"],
-  "keyMatchPoints": ["行业对口", "关键词重合"],
-  "preferredAnalysisText": "仅当系统文字提示该导师为心仪导师时输出此字段，评估优劣势(30字左右，不匹配也要直接指出差异环节)",
+  "matchReason": "推荐理由(详细阐述约100字，重点讲为什么匹配该学生，从行业背景、研究痛点、过往经历等角度进行深度分析)",
+  "suggestedTopics": ["结合两者提供具体的、带学术深度的论文方向建议1", "极具参考价值的深度方向建议2", "深度方向建议3"],
+  "keyMatchPoints": ["详细明确的匹配亮点1(如：拥有零售数字化转型一线经验)", "详细明确的匹配亮点2", "详细明确的匹配亮点3"],
+  "preferredAnalysisText": "仅当系统文字提示该导师为心仪导师时输出此字段，做大概100-150字的深度对比优劣势评估(如果不匹配也要直接深度指出差异细节)",
   "matchDegree": "高" 
 }
 注: matchScore 是 0-100 的整数。matchDegree 必须是 高/中/低 三个字之一。`;
@@ -146,7 +145,7 @@ router.post('/', async (req, res) => {
       // 附加一个空的 catch 防止 Node 抛出 UnhandledPromiseRejection 导致服务器整体崩溃
       timeoutPromise.catch(() => {});
 
-      const fetchPromise = callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 400 });
+      const fetchPromise = callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 1000 });
       fetchPromise.catch(() => {});
 
       try {
@@ -172,8 +171,8 @@ router.post('/', async (req, res) => {
     });
 
     // 2. 发起额外的全局分析并发请求
-    const OVERALL_SYSTEM_PROMPT = `你是MBA咨询专家。给该学生一条50字以内的毕业论文总体破题建议。直接输出纯文本，无需JSON！`;
-    const overallPromise = callMiniMax(OVERALL_SYSTEM_PROMPT, studentContext, { temperature: 0.3, maxTokens: 150 }).catch(() => "结合你在行业的丰富经验，可以选择以此痛点作为论文切入点进行突破。");
+    const OVERALL_SYSTEM_PROMPT = `你是MBA咨询专家。给该学生一段带有策略深度的毕业论文总体破题建议和选导师指导（至少100字）。直接输出纯文本，无需JSON！`;
+    const overallPromise = callMiniMax(OVERALL_SYSTEM_PROMPT, studentContext, { temperature: 0.3, maxTokens: 500 }).catch(() => "结合你在行业的丰富经验，可以选择以此痛点作为论文切入点进行突破。");
 
     // ============================================================
     // 第三阶段：汇聚并格式化 (Reduce)
