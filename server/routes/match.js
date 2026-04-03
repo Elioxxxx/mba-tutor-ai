@@ -139,16 +139,25 @@ router.post('/', async (req, res) => {
       
       const userMessage = `【学生情况】\n${studentContext}\n\n【该导师信息】\n${teacherText}\n\n【是否为学生特别指定的心仪候选】: ${isPreferred ? '是' : '否'}`;
 
-      // 每人的生成 Token 极少，加上 15 秒打底超时
-      const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 15000));
-      
+      let timer;
+      const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error('timeout')), 15000);
+      });
+      // 附加一个空的 catch 防止 Node 抛出 UnhandledPromiseRejection 导致服务器整体崩溃
+      timeoutPromise.catch(() => {});
+
+      const fetchPromise = callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 400 });
+      fetchPromise.catch(() => {});
+
       try {
         const result = await Promise.race([
-          callMiniMaxJSON(EVAL_SYSTEM_PROMPT, userMessage, { temperature: 0.1, maxTokens: 400 }),
-          timeout
+          fetchPromise,
+          timeoutPromise
         ]);
+        clearTimeout(timer);
         return result;
       } catch(e) {
+        clearTimeout(timer);
         console.error(`[Match] 并发评估导师 ${t.name} 时异常或超时: ${e.message}`);
         return {
           teacherName: t.name,
