@@ -141,7 +141,7 @@ router.post('/', async (req, res) => {
 
       let timer;
       const timeoutPromise = new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('timeout')), 15000);
+        timer = setTimeout(() => reject(new Error('timeout')), 60000); // 放宽至60秒，防止并发排队时被误杀
       });
       // 附加一个空的 catch 防止 Node 抛出 UnhandledPromiseRejection 导致服务器整体崩溃
       timeoutPromise.catch(() => {});
